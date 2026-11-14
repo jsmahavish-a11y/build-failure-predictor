@@ -1,0 +1,87 @@
+name: Build Risk Check
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  risk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Predict failure risk and comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.sha;
+
+            const { data: commit } = await github.rest.repos.getCommit({ owner, repo, ref: sha });
+            const files = commit.files || [];
+
+            const { data } = await github.rest.actions.listWorkflowRunsForRepo({
+              owner, repo, event: "push", status: "completed", per_page: 100
+            });
+
+            const byCommit = {};
+            for (const r of data.workflow_runs) {
+              if (r.head_sha === sha) continue;
+              if (!["success", "failure"].includes(r.conclusion)) continue;
+              const c = byCommit[r.head_sha] || (byCommit[r.head_sha] = { failed: 0, time: r.created_at });
+              if (r.conclusion === "failure") c.failed = 1;
+              if (r.created_at < c.time) c.time = r.created_at;
+            }
+            const history = Object.values(byCommit).sort((a, b) => new Date(b.time) - new Date(a.time));
+            const prevFailed = history.length ? history[0].failed : 0;
+            const last10 = history.slice(0, 10);
+            const recentRate = last10.length ? last10.reduce((s, c) => s + c.failed, 0) / last10.length : 0;
+
+            const payload = {
+              n_files: files.length,
+              additions: commit.stats.additions,
+              deletions: commit.stats.deletions,
+              test_files: files.filter(f => f.filename.toLowerCase().includes("test")).length,
+              dep_files: files.filter(f => ["requirements", "pyproject", "setup."].some(x => f.filename.includes(x))).length,
+              msg_len: commit.commit.message.length,
+              hour: new Date().getUTCHours(),
+              prev_failed: prevFailed,
+              recent_fail_rate: recentRate
+            };
+
+            let result;
+            for (let i = 0; i < 4 && !result; i++) {
+              try {
+                const res = await fetch("https://build-failure-predictor.onrender.com/predict", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(payload),
+                  signal: AbortSignal.timeout(60000)
+                });
+                if (res.ok) result = await res.json();
+              } catch (e) {
+                core.warning(String(e));
+              }
+            }
+            if (!result) {
+              core.setFailed("Prediction API did not respond");
+              return;
+            }
+
+            const body = [
+              "### Build failure risk: " + result.level,
+              "",
+              "| Signal | Value |",
+              "|---|---|",
+              "| Risk score | " + result.failure_risk + " |",
+              "| Files changed | " + payload.n_files + " |",
+              "| Lines added / deleted | " + payload.additions + " / " + payload.deletions + " |",
+              "| Test files changed | " + payload.test_files + " |",
+              "| Previous commit failed | " + (payload.prev_failed ? "yes" : "no") + " |",
+              "",
+              "_Relative risk score from an ML model, not a guarantee._"
+            ].join("\n");
+
+            await github.rest.repos.createCommitComment({ owner, repo, commit_sha: sha, body });
