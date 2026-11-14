@@ -14,6 +14,7 @@ When a CI build fails, developers lose time waiting for results and debugging. T
 3. Features: files changed, lines added and deleted, test files changed, dependency files changed, commit message length, hour of day, previous commit failed, recent failure rate in the repo.
 4. Trained a Random Forest with class weighting to handle the imbalance (about 9% failures).
 5. Served the model with FastAPI and deployed it on Render.
+6. Added a GitHub Actions workflow that calls the live API on every push to main and comments the risk level on the commit.
 
 ## Results
 Time-based split (train on older commits, test on the newest 20%):
@@ -44,9 +45,11 @@ Response: `{"failure_risk": 0.905, "level": "HIGH"}`
 - `failure_risk` is a relative risk score, not a calibrated probability.
 - Failures can come from flaky tests or network issues that commit features cannot capture.
 - Level thresholds (0.25 and 0.5) were chosen by hand.
+- The model only sees commit-level signals and recent failure history, so non-code changes (for example images) are scored LOW.
 
 ## Tech stack
 Python, pandas, scikit-learn, FastAPI, Render, GitHub API
 
+
 ## Next steps
-Docker, deployment on AWS, GitHub Actions integration that comments the risk on pull requests, more repos and data.
+Docker, deployment on AWS, extending the Actions comment to pull requests, more repos and data.
