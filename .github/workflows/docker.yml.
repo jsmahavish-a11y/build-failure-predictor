@@ -1,0 +1,39 @@
+name: Docker Build and Test
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
+
+      - name: Smoke test the container
+        run: |
+          docker run -d -p 8000:8000 --name bfp ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
+          sleep 10
+          curl -f http://localhost:8000/
+          curl -f -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"n_files": 25, "additions": 800, "deletions": 120, "test_files": 0, "dep_files": 1, "msg_len": 12, "hour": 23, "prev_failed": 1, "recent_fail_rate": 0.3}'
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        run: docker push ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
