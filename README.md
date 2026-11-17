@@ -15,6 +15,7 @@ When a CI build fails, developers lose time waiting for results and debugging. T
 4. Trained a Random Forest with class weighting to handle the imbalance (about 9% failures).
 5. Served the model with FastAPI and deployed it on Render.
 6. Added a GitHub Actions workflow that calls the live API on every push to main and comments the risk level on the commit.
+7. Containerized the API with Docker; a GitHub Actions workflow builds the image, smoke-tests /predict inside the container, and publishes it to GitHub Container Registry.
 
 ## Results
 Time-based split (train on older commits, test on the newest 20%):
@@ -48,8 +49,8 @@ Response: `{"failure_risk": 0.905, "level": "HIGH"}`
 - The model only sees commit-level signals and recent failure history, so non-code changes (for example images) are scored LOW.
 
 ## Tech stack
-Python, pandas, scikit-learn, FastAPI, Render, GitHub API
+Python, pandas, scikit-learn, FastAPI, Docker, GitHub Actions, GitHub Container Registry, Render, GitHub API
 
 
 ## Next steps
-Docker, deployment on AWS, extending the Actions comment to pull requests, more repos and data.
+Deployment on AWS, extending the Actions comment to pull requests, more repos and data.
