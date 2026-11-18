@@ -2,8 +2,7 @@
 
 An ML model that predicts the risk of a CI build failing from commit-level features, served as a live REST API.
 
-**Live API docs:** https://build-failure-predictor.onrender.com/docs
-(Hosted on a free plan, so the first request after inactivity can take about 50 seconds.)
+**Live API docs:** https://build-failure-predictor-latest.onrender.com/docs
 
 ## Problem
 When a CI build fails, developers lose time waiting for results and debugging. This project estimates failure risk before the build result is known.
@@ -15,7 +14,7 @@ When a CI build fails, developers lose time waiting for results and debugging. T
 4. Trained a Random Forest with class weighting to handle the imbalance (about 9% failures).
 5. Served the model with FastAPI and deployed it on Render.
 6. Added a GitHub Actions workflow that calls the live API on every push to main and comments the risk level on the commit.
-7. Containerized the API with Docker; a GitHub Actions workflow builds the image, smoke-tests /predict inside the container, and publishes it to GitHub Container Registry.
+7. Containerized the API with Docker; a GitHub Actions workflow builds the image, smoke-tests /predict inside the container, and publishes it to GitHub Container Registry. The same image is deployed on Render.
 
 ## Results
 Time-based split (train on older commits, test on the newest 20%):
@@ -51,6 +50,5 @@ Response: `{"failure_risk": 0.905, "level": "HIGH"}`
 ## Tech stack
 Python, pandas, scikit-learn, FastAPI, Docker, GitHub Actions, GitHub Container Registry, Render, GitHub API
 
-
 ## Next steps
-Deployment on AWS, extending the Actions comment to pull requests, more repos and data.
+AWS deployment (needs an AWS account), extending the Actions comment to pull requests, more repos and data, ablation study and model comparison.
