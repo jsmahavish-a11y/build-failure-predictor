@@ -29,6 +29,19 @@ Time-based split (train on older commits, test on the newest 20%):
 
 Failure-history features gave the largest improvement over using change-size features alone.
 
+### Ablation study
+5-fold cross-validation on 553 commits (51 failures). Random-guess baseline for average precision is 0.09.
+
+| Features | Average precision | Recall | F1 |
+|---|---|---|---|
+| All features | 0.458 | 0.545 | 0.463 |
+| Only failure history | 0.423 | 0.547 | 0.494 |
+| Without size features | 0.441 | 0.529 | 0.447 |
+| Without failure history | 0.335 | 0.371 | 0.342 |
+| Without context features | 0.451 | 0.567 | 0.487 |
+
+Removing failure-history features causes the largest drop. Differences of about 0.02 are within noise given only 51 failures. Because most failures come from one repository, the history features may partly act as a repository identifier; a leave-one-repo-out test is the next planned check.
+
 ## API
 `POST /predict`
 
