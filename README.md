@@ -27,7 +27,22 @@ Time-based split (train on older commits, test on the newest 20%):
 | Random-guess baseline (average precision) | 0.09 |
 | Model (average precision) | 0.38 |
 
-Failure-history features gave the largest improvement over using change-size features alone.
+### Cross-repository test (leave-one-repo-out)
+Each repository was held out in turn and the model was trained on the other four.
+
+| Held-out repo | Failures | Random baseline | Model |
+|---|---|---|---|
+| click | 3 | 0.019 | 0.020 |
+| flask | 34 | 0.453 | 0.462 |
+| requests | 7 | 0.096 | 0.123 |
+| pytest | 7 | 0.028 | 0.058 |
+
+The model does not clearly beat the random baseline on repositories it has not seen. The earlier scores come mostly from repositories seen during training, and failure history likely acts partly as a repository identifier (Flask holds 34 of the 51 failures). The model is best viewed as a per-repository risk estimator that needs that repository's own history, not a general-purpose predictor.
+
+### Comparison with a simple rule
+Predicting "fail if the previous commit failed" gives precision 0.46, recall 0.46 and F1 0.46 on the same data, essentially matching the model (F1 0.46). Failures occur in streaks (a broken build often stays broken for several commits), so most of the model's signal comes from failure persistence.
+
+Restricting to the 503 commits that follow a passing commit (28 failures, random baseline 0.056), the model reaches an average precision of 0.153, so commit features may add a small amount of signal beyond streaks. With only 28 failures and shuffled cross-validation, this is indicative, not conclusive.
 
 ### Ablation study
 5-fold cross-validation on 553 commits (51 failures). Random-guess baseline for average precision is 0.09.
@@ -72,6 +87,7 @@ Then open http://localhost:8000/docs
 - Level thresholds (0.25 and 0.5) were chosen by hand.
 - The model only sees commit-level signals and recent failure history, so non-code changes (for example images) are scored LOW.
 - Redeploying the Render service after an image update is manual.
+- Does not generalise to unseen repositories (see the cross-repository test).
 
 ## Tech stack
 Python, pandas, scikit-learn, FastAPI, Docker, GitHub Actions, GitHub Container Registry, Render, GitHub API
