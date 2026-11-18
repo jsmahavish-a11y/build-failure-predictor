@@ -1,8 +1,11 @@
 # Build Failure Predictor
 
-An ML model that predicts the risk of a CI build failing from commit-level features, served as a live REST API.
+An ML model that predicts the risk of a CI build failing from commit-level features, served as a live REST API, containerized with Docker, and wired into GitHub Actions.
 
 **Live API docs:** https://build-failure-predictor-latest.onrender.com/docs
+(Hosted on a free plan, so the first request after inactivity can take about 50 seconds.)
+
+**Container image:** `ghcr.io/jsmahavish-a11y/build-failure-predictor:latest`
 
 ## Problem
 When a CI build fails, developers lose time waiting for results and debugging. This project estimates failure risk before the build result is known.
@@ -14,7 +17,7 @@ When a CI build fails, developers lose time waiting for results and debugging. T
 4. Trained a Random Forest with class weighting to handle the imbalance (about 9% failures).
 5. Served the model with FastAPI and deployed it on Render.
 6. Added a GitHub Actions workflow that calls the live API on every push to main and comments the risk level on the commit.
-7. Containerized the API with Docker; a GitHub Actions workflow builds the image, smoke-tests /predict inside the container, and publishes it to GitHub Container Registry. The same image is deployed on Render.
+7. Containerized the API with Docker. A second workflow builds the image, smoke-tests `/predict` inside the container, and publishes it to GitHub Container Registry. The same image is deployed on Render.
 
 ## Results
 Time-based split (train on older commits, test on the newest 20%):
@@ -39,6 +42,15 @@ Failure-history features gave the largest improvement over using change-size fea
 
 Response: `{"failure_risk": 0.905, "level": "HIGH"}`
 
+## Run locally with Docker
+
+```bash
+docker pull ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
+docker run -p 8000:8000 ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
+```
+
+Then open http://localhost:8000/docs
+
 ## Limitations
 - Small dataset (51 failing commits), and most failures come from one repo, so results are noisy.
 - The test set has only 10 failures; treat the score as indicative.
@@ -46,9 +58,10 @@ Response: `{"failure_risk": 0.905, "level": "HIGH"}`
 - Failures can come from flaky tests or network issues that commit features cannot capture.
 - Level thresholds (0.25 and 0.5) were chosen by hand.
 - The model only sees commit-level signals and recent failure history, so non-code changes (for example images) are scored LOW.
+- Redeploying the Render service after an image update is manual.
 
 ## Tech stack
 Python, pandas, scikit-learn, FastAPI, Docker, GitHub Actions, GitHub Container Registry, Render, GitHub API
 
 ## Next steps
-AWS deployment (needs an AWS account), extending the Actions comment to pull requests, more repos and data, ablation study and model comparison.
+AWS deployment, extending the Actions comment to pull requests, more repos and data, an ablation study and model comparison, explaining each prediction.
