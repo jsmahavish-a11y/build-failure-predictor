@@ -42,7 +42,7 @@ docker run -p 8000:8000 ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
 Then open http://localhost:8000/docs
 
 ## Evaluation
-
+The time-based split, ablation and simple-rule results below the cross-repository test come from the first, smaller dataset (5 repositories, 553 commits, 51 failures). The cross-repository results on 15 repositories (1,496 commits, 149 failures) are the most reliable.
 The random-guess baseline for average precision is about 0.09, because only about 9% of commits fail.
 
 ### Time-based split
@@ -66,9 +66,17 @@ Trained on older commits and tested on the newest 20% (10 failures in the test s
 
 Removing the failure-history features causes the largest drop. Differences of about 0.02 are within noise given only 51 failures.
 
-### Comparison with a simple rule
-Predicting "fail if the previous commit failed" gives precision 0.46, recall 0.46 and F1 0.46 on the same data, essentially matching the model (F1 0.46). Failures occur in streaks (a broken build often stays broken for several commits), so most of the model's signal comes from failure persistence.
+### Comparison with simple rules
+On the same five held-out repositories (15-repository training data), average precision for two one-line rules is compared with the model.
 
+| Method | Average precision |
+|---|---|
+| Random guess | 0.230 |
+| Rule: fail if previous commit failed | 0.311 |
+| Rule: recent failure rate of the repository | 0.272 |
+| Model (old features + history) | 0.345 |
+
+The model is slightly ahead on average but not on every repository. On aiohttp and pip the rules are close to random while the model scores about 1.8 to 2 times the baseline. On flask and sqlalchemy the "previous commit failed" rule beats the model. A possible explanation is that failures come in streaks in some repositories, but this was not tested. With 18 to 31 failures per held-out repository, the 0.03 gap between model and rule is within noise.
 Restricting to the 503 commits that follow a passing commit (28 failures, random baseline 0.056), the model reaches an average precision of 0.153, so commit features may add a small amount of signal beyond streaks. With only 28 failures and shuffled cross-validation, this is indicative, not conclusive.
 
 ### Cross-repository test (leave-one-repo-out)
@@ -96,6 +104,8 @@ The model does not clearly beat the random baseline on repositories it has not s
 - Level thresholds (0.25 and 0.5) were chosen by hand.
 - The model only sees commit-level signals and recent failure history, so non-code changes (for example images) are scored LOW.
 - Redeploying the Render service after an image update is manual.
+- Limited data: 149 failing commits across 15 repositories; per-repository results are noisy.
+- Only modestly better than a one-line "previous commit failed" rule, and not better on every repository.
 
 ## Tech stack
 Python, pandas, scikit-learn, FastAPI, Docker, GitHub Actions, GitHub Container Registry, Render, GitHub API
