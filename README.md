@@ -72,20 +72,24 @@ Predicting "fail if the previous commit failed" gives precision 0.46, recall 0.4
 Restricting to the 503 commits that follow a passing commit (28 failures, random baseline 0.056), the model reaches an average precision of 0.153, so commit features may add a small amount of signal beyond streaks. With only 28 failures and shuffled cross-validation, this is indicative, not conclusive.
 
 ### Cross-repository test (leave-one-repo-out)
-Each repository was held out in turn and the model was trained on the other four.
+Data: 1,496 commits from 15 repositories (149 failures). Each repository with at least 10 failures was held out in turn, and the model was trained on the other 14. The score is average precision; higher is better.
 
-| Held-out repo | Failures | Random baseline | Model |
+| Held-out repo | Failures | Random baseline | Model (old features + history) |
 |---|---|---|---|
-| click | 3 | 0.019 | 0.020 |
-| flask | 34 | 0.453 | 0.462 |
-| requests | 7 | 0.096 | 0.123 |
-| pytest | 7 | 0.028 | 0.058 |
+| aiohttp | 19 | 0.151 | 0.272 |
+| flask | 31 | 0.463 | 0.599 |
+| pip | 18 | 0.120 | 0.242 |
+| scrapy | 25 | 0.291 | 0.410 |
+| sqlalchemy | 19 | 0.127 | 0.200 |
+| Average | 22 | 0.230 | 0.345 |
+
+With this larger and more varied training set the model beats the random baseline on all five held-out repositories, about 1.5 times on average, which an earlier 5-repository version did not. Without the failure-history features the average falls to 0.270 and the model drops below baseline on flask and scrapy. Five extra commit-content features (message keywords, file types, number of folders) did not help (0.330 with them against 0.345 without), which is within noise. Each held-out repository has only 18 to 31 failures, so differences of about 0.03 to 0.05 are not meaningful.
 
 The model does not clearly beat the random baseline on repositories it has not seen. Failure history likely acts partly as a repository identifier (Flask holds 34 of the 51 failures). The model is best viewed as a per-repository risk estimator that needs that repository's own history, not a general-purpose predictor.
 
 ## Limitations
 - Small dataset (51 failing commits), and most failures come from one repository, so results are noisy.
-- Does not generalise to unseen repositories (see the cross-repository test).
+- Only modestly better than random on held-out repositories (about 1.5 times), and it relies on a repository's own recent build history.
 - Most of the signal is failure persistence, which a one-line rule also captures.
 - `failure_risk` is a relative risk score, not a calibrated probability.
 - Failures can come from flaky tests or network issues that commit features cannot capture.
