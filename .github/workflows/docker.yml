@@ -25,6 +25,7 @@ jobs:
         run: |
           docker run -d -p 8000:8000 --name bfp ghcr.io/jsmahavish-a11y/build-failure-predictor:latest
           sleep 10
+          docker logs bfp
           curl -f http://localhost:8000/
           curl -f -X POST http://localhost:8000/predict -H "Content-Type: application/json" -d '{"n_files": 25, "additions": 800, "deletions": 120, "test_files": 0, "dep_files": 1, "msg_len": 12, "hour": 23, "prev_failed": 1, "recent_fail_rate": 0.3}'
 
